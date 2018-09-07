@@ -1,72 +1,7 @@
 # -*- coding: utf-8 -*-
 
-'''
-    ######################################
-    #             Python 2.7             #      
-    # __author__ = "İlkay Tevfik Devran" #   
-    # __date__ = "07.09.2018"            #
-    # __email__ = "devrani@mef.edu.tr"   # 
-    ######################################
-'''
-
 import requests
-import re
 from bs4 import BeautifulSoup
-
-
-def player_info_deneme():
-
-    # Website URL
-    durl = 'https://www.transfermarkt.com.tr/aktuell/newsarchiv'
-    muslera_url = 'https://www.transfermarkt.com.tr/fernando-muslera/profil/spieler/58088'
-    ronaldo_url = 'https://www.transfermarkt.com.tr/cristiano-ronaldo/profil/spieler/8198'
-    
-    # Get response 'r'
-    r = send_request(url)
-
-    # parse the response
-    soup = BeautifulSoup(r.text, 'html.parser')
-
-    try:
-        table = soup.find('table')
-        rows = table.findAll('tr')
-
-        for tr in rows:
-            info_title = tr.findAll('th')
-            player_info = tr.findAll('td')
-            player_data = []
-            for info in player_info:
-                text = info.get_text().strip()
-                
-                
-            '''for td in player_info:
-                text = ''.join(td)
-                utftext = str(text.encode('utf-8'))
-                text_data.append(utftext) # EDIT
-            print (text_data)'''
-    except:
-		pass
-
-def conv(a):
-    a = str(a)
-    for x in range(0, len(a)):
-        a = a.replace('\"', '\'')
-        a = a.replace('İ', 'I')
-        a = a.replace('Ş', 's')
-        a = a.replace('Ç', 'C')
-        a = a.replace('Ü', 'U')
-        a = a.replace('Ö', 'O')
-        a = a.replace('ş', 's')
-        a = a.replace('ğ', 'g')
-        a = a.replace('ı', 'i')
-        a = a.replace('ö', 'o')
-        a = a.replace('ü', 'u')
-        a = a.replace('ç', 'c')
-        a = a.replace('/', '-')
-
-    return a
-
-
 
 
 def send_request(url):
@@ -81,7 +16,7 @@ def send_request(url):
     try:
         r = requests.get(url, headers=headers)
     except:
-        print 'ERROR:\nResponse Status:', r.status_code
+        print ('ERROR:\nResponse Status:', r.status_code)
         exit()
 
     return r
@@ -107,12 +42,12 @@ def get_leagues(soup):
         print('ERROR:\n Method: get_leagues')
         exit()
 
-    '''
+    
     for i in leagues_list:
         print (i)
-        print (type(i[0]),type(i[1]))
+        #print (type(i[0]),type(i[1]))
         print('\n')
-    '''
+    input()
 
     return leagues_list
 
@@ -126,7 +61,7 @@ def get_teams_of_league(teams_soup):
         
         for row in rows:
             club = row.get_text().strip()   #club name
-            #print club
+            #print (club)
             for team_link in row.findAll('a'):
                 team_link = team_link.get('href').strip()
                 if team_link != '#':
@@ -160,7 +95,7 @@ def get_players_in_team(club_soup):
                     count=1
                     continue
                 player_name = player_link.text
-                print(player_name)
+                #print(player_name)
                 player_list.append(str(player_link.get('href')))
                 count+=1    
             
@@ -179,6 +114,43 @@ def get_players_in_team(club_soup):
 
     return player_list
 
+def get_player_profile(profile_soup):
+    profile = []
+    
+    try:
+        info_table = profile_soup.find_all('table', attrs={'class':'auflistung'})
+        print (info_table)
+        rows = BeautifulSoup(str(info_table), "html.parser")
+        #rows = info_table.findAll('tr')
+        #print (rows[0])
+
+        #BURDA KALDIN
+        input()
+        for tr in rows:
+            info_title = tr.findAll('th')
+            player_info = tr.findAll('td')
+            player_data = []
+            for info in player_info:
+                text = info.get_text().strip()
+
+        input()
+       
+            
+    except:
+        print('ERROR:\n Method: get_players_in_team')
+        exit()
+    
+    '''
+    print(len(profile))
+    for i in profile:
+        print (i)
+        print (type(i))
+        print('\n')
+    '''
+
+
+    return profile
+
 def main():
 
     URL = 'https://www.transfermarkt.com.tr'
@@ -194,9 +166,10 @@ def main():
         # GET LEAGUES' LINKS
         leagues = get_leagues(soup)
 
+
         for l in leagues: # League Info Page
             league_name, league_href = l
-            #print '\n\n', league_name, '\n'
+            #print ('\n\n', league_name, '\n')
 
             teams_r = send_request(URL + league_href)
             # Parse the response
@@ -204,9 +177,10 @@ def main():
             # GET TEAMS IN LEAGUES
             teams = get_teams_of_league(teams_soup)
             
+
             for t in teams: # Club Info Page
                 club, club_href = t
-                print '\n\n', club, '\n'
+                #print '\n\n', club, '\n'
 
                 club_r = send_request(URL + club_href)
                 # Parse the response
@@ -214,6 +188,13 @@ def main():
                 # GET PLAYERS IN TEAM
                 players = get_players_in_team(club_soup)
 
+
+                for p_href in players: # Player Info Page
+                    player_r = send_request(URL + p_href)
+                    # Parse the response
+                    profile_soup = BeautifulSoup(player_r.text, 'html.parser')
+                    # GET PLAYER INFO
+                    player_profile = get_player_profile(profile_soup)
 
             
 
@@ -225,6 +206,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
