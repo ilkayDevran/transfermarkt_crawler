@@ -126,7 +126,7 @@ def get_teams_of_league(teams_soup):
         
         for row in rows:
             club = row.get_text().strip()   #club name
-            print club
+            #print club
             for team_link in row.findAll('a'):
                 team_link = team_link.get('href').strip()
                 if team_link != '#':
@@ -145,6 +145,39 @@ def get_teams_of_league(teams_soup):
 
     return team_list
 
+def get_players_in_team(club_soup):
+    player_list = []
+
+    try:
+        tables = club_soup.find_all('table', attrs={'class':'items'})
+        staff_table = tables[0]
+        rows = staff_table.findAll('td', attrs = {'class':'posrela'})
+
+        count = 1 # count is used to prevent repeating same links
+        for row in rows:
+            for player_link in row.findAll('a', attrs = {'class':'spielprofil_tooltip'}):
+                if count%2 == 0:
+                    count=1
+                    continue
+                player_name = player_link.text
+                print(player_name)
+                player_list.append(str(player_link.get('href')))
+                count+=1    
+            
+    except:
+        print('ERROR:\n Method: get_players_in_team')
+        exit()
+    
+    '''
+    print(len(player_list))
+    for i in player_list:
+        print (i)
+        print (type(i))
+        print('\n')
+    '''
+
+
+    return player_list
 
 def main():
 
@@ -153,25 +186,35 @@ def main():
     # Lists of Necassary Infos and Links 
     country_href_list = ['/wettbewerbe/national/wettbewerbe/174'] # '/wettbewerbe/national/wettbewerbe/40'
     
-    # Country Leagues -> Teams of a League -> Team Players -> Player Info
-    for country_href in country_href_list:
+    # Country Leagues -> Teams of a League -> Players in Team -> Player Info
+    for country_href in country_href_list: # Country Leagues Page
         r = send_request(URL + country_href)
         # Parse the response
         soup = BeautifulSoup(r.text, 'html.parser')
         # GET LEAGUES' LINKS
-        leagues= get_leagues(soup)
+        leagues = get_leagues(soup)
 
-        
-        for l in leagues:
+        for l in leagues: # League Info Page
             league_name, league_href = l
-            print '\n\n', league_name, '\n'
+            #print '\n\n', league_name, '\n'
 
             teams_r = send_request(URL + league_href)
             # Parse the response
             teams_soup = BeautifulSoup(teams_r.text, 'html.parser')
             # GET TEAMS IN LEAGUES
-            list_of_teams = get_teams_of_league(teams_soup)
+            teams = get_teams_of_league(teams_soup)
             
+            for t in teams: # Club Info Page
+                club, club_href = t
+                print '\n\n', club, '\n'
+
+                club_r = send_request(URL + club_href)
+                # Parse the response
+                club_soup = BeautifulSoup(club_r.text, 'html.parser')
+                # GET PLAYERS IN TEAM
+                players = get_players_in_team(club_soup)
+
+
             
 
         print('\n\n******************\n\n\n')
