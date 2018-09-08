@@ -1,5 +1,14 @@
 # -*- coding: UTF-8 -*-
 
+'''
+    ##########################################
+    #              Python 3.6                #      
+    # __author__ = "İlkay Tevfik Devran"   	 #   
+    # __date__ = "08.09.2018"                #
+    # __email__ = "devrani@mef.edu.tr"       # 
+    ##########################################
+'''
+
 import requests
 from bs4 import BeautifulSoup
 from league import League as LEAG
@@ -24,15 +33,15 @@ class TransferMarktCrawler:
             
             count = 1
             for table in tables:
-                #print('1')
+                print('for 1')
                 for league_link in table.findAll('a'):
-                    #print('2')
-                    currentLeague = LEAG()
+                    print('for 2')
+                    currentLeague = LEAG() # CREATE LEAGUE OBJECT
                     if league_link.get('title') != 'Müsabaka forumuna git':
-                        #print('1 if')
+                        print('1 if')
                         count+=1
                         if count % 2 != 0:
-                            #print('2 if')
+                            print('2 if')
                             count=1
                             # Go Into Current LEAGUE Page and Initialize a League Object
                             leaguePage_r = self.send_request(self.URL + league_link.get('href'))
@@ -47,8 +56,8 @@ class TransferMarktCrawler:
                             tbody = table_of_teams.find('tbody')  # tbody
                             club_column = tbody.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small hide-for-pad'}) # (Kulup) column to reach the link
                             for clb in club_column:
-                                #print('3')
-                                currentTeam = CLB()
+                                print('for 3')
+                                currentTeam = CLB() # CREATE CLUB OBJECT
                                 # Go Into Current TEAM Page and Initialize a Team Object
                                 teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
                                 soupOfTeamPage = BeautifulSoup(teamPage_r.text, 'html.parser')
@@ -66,22 +75,31 @@ class TransferMarktCrawler:
                                             continue
 
                                         count+=1
-                                        currentPlayer = PLYR()
+                                        currentPlayer = PLYR()  # CREATE PLAYER OBJECT
                                         # Go Into Current PLAYER Page and Initialize a Player Object
                                         playerProfile_r = self.send_request(self.URL + player.get('href'))
                                         soupOfPlayerProfile = BeautifulSoup(playerProfile_r.text, 'html.parser')
                                         self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
-                                        
-                                        input()
-                        
-                        
-                        
+                                        currentTeam.players.append(currentPlayer)
+                                currentLeague.clubs.append(currentTeam)
+                                """
+                                print('FINAL PRINT')
+                                for club in currentLeague.clubs:
+                                    for player in club.players:
+                                        print(player.full_name, '\t', player.currentClub)
+                            #input()
+                            """
                         else:
                             continue
                     else:
                         continue
+                    self.leagues.append(currentLeague)
+                    print(self.leagues[0].name)
+                    print(self.leagues[0].clubs[0].name)
+                    print(self.leagues[0].clubs[0].players[0].full_name)
+                    
                                 
-
+                    print('enter a bas')
                     input() 
                 input() 
 
@@ -163,6 +181,11 @@ class TransferMarktCrawler:
         except:
             pass
         try:
+            indx = lst.index('Boyu:')
+            playerObj.hight = lst[indx+1]
+        except:
+            pass
+        try:
             indx = lst.index('Uyruğu:')
             playerObj.nationality = lst[indx+1]
         except:
@@ -191,14 +214,20 @@ class TransferMarktCrawler:
             indx = lst.index('Takıma katılma tarihi:')
             playerObj.joinedDate = lst[indx+1]
         except:
+            indx = lst.index('Takıma katılma tarihi::')
+            playerObj.joinedDate = lst[indx+1]
+        else:
             pass
         try:
             indx = lst.index('Sözleşme bitiş tarihi:')  ######
-            playerObj.currentClub = lst[indx+1]
+            playerObj.endOfContDate = lst[indx+1]
         except:
+            indx = lst.index('Sözleşme bitiş tarihi::')  ######
+            playerObj.endOfContDate = lst[indx+1]
+        else:
             pass
         playerObj.href = link
-        playerObj.toString()
+        #playerObj.toString()
 
     def send_request(self, url):
         # Check 'User-Agent' whether website blocks traffic from non-browsers
