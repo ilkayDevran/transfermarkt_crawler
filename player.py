@@ -16,7 +16,7 @@ class Player:
         self.pastOfTransfers = []
 
     def toString(self):
-        print ('Full Name: ', self.full_name)
+        print ('\nFull Name: ', self.full_name)
         print ('Birth Day: ', self.bday)
         print ('Birth Place: ', self.bplace)
         print ('Age: ', self.age)
@@ -29,6 +29,7 @@ class Player:
         print ('Joined Date: ', self.joinedDate)
         print ('End Of Cont Date: ', self.endOfContDate)
         print ('href: ', self.href)
+        print('\nTransfer History')
         for t in self.pastOfTransfers:
             print (t)
         print('\n')

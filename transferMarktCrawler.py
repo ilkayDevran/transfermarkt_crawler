@@ -33,15 +33,15 @@ class TransferMarktCrawler:
             
             count = 1
             for table in tables:
-                print('for 1')
+                #print('for 1')
                 for league_link in table.findAll('a'):
-                    print('for 2')
+                    #print('for 2')
                     currentLeague = LEAG() # CREATE LEAGUE OBJECT
                     if league_link.get('title') != 'Müsabaka forumuna git':
-                        print('1 if')
+                        #print('1 if')
                         count+=1
                         if count % 2 != 0:
-                            print('2 if')
+                            #print('2 if')
                             count=1
                             # Go Into Current LEAGUE Page and Initialize a League Object
                             leaguePage_r = self.send_request(self.URL + league_link.get('href'))
@@ -56,7 +56,7 @@ class TransferMarktCrawler:
                             tbody = table_of_teams.find('tbody')  # tbody
                             club_column = tbody.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small hide-for-pad'}) # (Kulup) column to reach the link
                             for clb in club_column:
-                                print('for 3')
+                                #print('for 3')
                                 currentTeam = CLB() # CREATE CLUB OBJECT
                                 # Go Into Current TEAM Page and Initialize a Team Object
                                 teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
@@ -227,8 +227,17 @@ class TransferMarktCrawler:
         else:
             pass
         playerObj.href = link
-        #playerObj.toString()
-
+        transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
+        rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
+        for row in rows:
+            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text().strip()
+            date = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip()
+            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text().strip()
+            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text().strip()
+            playerObj.pastOfTransfers.append((season,date,old_team,new_team))
+        
+        playerObj.toString()
+        input()
     def send_request(self, url):
         # Check 'User-Agent' whether website blocks traffic from non-browsers
         session = requests.Session()
