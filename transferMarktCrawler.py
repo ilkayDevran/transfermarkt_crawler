@@ -15,6 +15,8 @@ from league import League as LEAG
 from club import Club as CLB
 from player import Player as PLYR
 from dataBase import DataBase as DB
+import time
+import re
 
 
 class TransferMarktCrawler:
@@ -37,6 +39,7 @@ class TransferMarktCrawler:
                 #print('for 1')
                 for league_link in table.findAll('a'):
                     #print('for 2')
+                    start_time = time.time()
                     currentLeague = LEAG() # CREATE LEAGUE OBJECT
                     if league_link.get('title') != 'Müsabaka forumuna git':
                         #print('1 if')
@@ -48,9 +51,15 @@ class TransferMarktCrawler:
                             leaguePage_r = self.send_request(self.URL + league_link.get('href'))
                             
                             soupOfLeaguePage = BeautifulSoup(leaguePage_r.text, 'html.parser')
+    
+                            if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Kulüp':
+                                if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Verein':
+                                    print('This is not a useful league table. Link, ', league_link.get('href'))
+                                    continue
+                                      
                             # set league info
                             self.set_league_infos(currentLeague,soupOfLeaguePage, league_link.get('href'))
-                            self.leagues.append(currentLeague)
+                            print(currentLeague.name, currentLeague.type, '------------------------')
 
                             # parsing team table in current league page to get links of teams
                             table_of_teams = soupOfLeaguePage.find('div', attrs={'id':'yw1', 'class':'grid-view'}) # reaching to the team table in league page 
@@ -63,6 +72,7 @@ class TransferMarktCrawler:
                                 teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
                                 soupOfTeamPage = BeautifulSoup(teamPage_r.text, 'html.parser')
                                 self.set_club_infos(currentTeam, soupOfTeamPage, clb.find('a').get('href'))
+                                print(currentTeam.name)
                                 
                                 # parsing player table in current team page to get links of player profiles
                                 table_of_players = soupOfTeamPage.find('div', attrs={'id':'yw1', 'class':'grid-view'})
@@ -83,14 +93,14 @@ class TransferMarktCrawler:
                                         #print('href:', player.get('href'))
                                         try:
                                             self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
-                                            print('Try:', currentPlayer.full_name)
+                                            #print('\t', currentPlayer.full_name,)
 
                                         except:
-                                            
                                             self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player.get('href'))
-                                            print('except DE:', currentPlayer.full_name)
+                                            #print('\t', currentPlayer.full_name,)
                                         else:
                                             pass
+                                        
                                         currentTeam.players.append(currentPlayer)
                                 currentLeague.clubs.append(currentTeam)
                                 """
@@ -104,36 +114,48 @@ class TransferMarktCrawler:
                             continue
                     else:
                         continue
-                    
+                    print("--- %s seconds ---" % (time.time() - start_time))
                     self.leagues.append(currentLeague)
+                    print('Insertion time**************')
                     self.db.insert_league_data(currentLeague)
+                    print('Insertion has been complited! :)')
+                    print('\n\n\n')
+                    exit()
                     """
                     print(self.leagues[0].name)
                     print(self.leagues[0].clubs[0].name)
                     print(self.leagues[0].clubs[0].players[0].full_name)
                     """
-                                
-                    print('Insertion has been complited! :)')
+                             
+                    
                 
 
     def set_league_infos(self, leagueObj, soupOfLeaguePage,link):
         profileHeader = soupOfLeaguePage.find_all('table', attrs = {'class' : 'profilheader'})
+        lst = [text for text in profileHeader[0].stripped_strings]
         try:
-            lst = [text for text in profileHeader[0].stripped_strings]
-            leagueObj.name = soupOfLeaguePage.find('h1', attrs = {'class' : 'spielername-profil'}).get_text().strip()
-            leagueObj.type = lst[lst.index('Lig seviyesi:')+1]
+            leagueObj.name = soupOfLeaguePage.find('h1', attrs = {'class' : 'spielername-profil'}).get_text(strip=True)
         except:
             pass
         try:
-            leagueObj.name = soupOfLeaguePage.find('h1', attrs = {'itemprop' : 'name'}).get_text().strip()
+            s = lst[lst.index('Lig seviyesi:')+1]
+            try:
+                leagueObj.type = s.split('\xa0')[0]
+            except:
+                leagueObj.type = lst[lst.index('Lig seviyesi:')+1]
+                pass
         except:
             pass
         try:
-            leagueObj.country = lst[lst.index('Lig seviyesi:')+2]
+            leagueObj.name = soupOfLeaguePage.find('h1', attrs = {'itemprop' : 'name'}).get_text(strip=True).strip()
         except:
             pass
         try:
-            leagueObj.totalValue = soupOfLeaguePage.find('div', attrs = {'class' : 'marktwert'}).get_text().strip().split(':', 1)[-1]
+            leagueObj.country = (lst[lst.index('Lig seviyesi:')+2].split(' '))[0]
+        except:
+            pass
+        try:
+            leagueObj.totalValue = soupOfLeaguePage.find('div', attrs = {'class' : 'marktwert'}).get_text(strip=True).strip().split(':', 1)[-1]
         except:
             pass
         leagueObj.href = link  #league href
@@ -144,7 +166,7 @@ class TransferMarktCrawler:
         
     def set_club_infos(self, teamObj, soupOfTeamPage, link):
         try:
-            teamObj.name = soupOfTeamPage.find('div', attrs={'class':'dataName'}).find('h1').get_text().strip()
+            teamObj.name = soupOfTeamPage.find('div', attrs={'class':'dataName'}).find('h1').get_text(strip=True).strip()
         except:
             pass
             
@@ -152,22 +174,27 @@ class TransferMarktCrawler:
         dataDaten = dataContent.find_all('div', attrs={'class':'dataDaten'})[0]
         rows = dataDaten.findAll('p')
         try:
-            teamObj.numOfPlayers = rows[0].find('span', attrs={'class':'dataValue'}).get_text().strip()
+            teamObj.numOfPlayers = rows[0].find('span', attrs={'class':'dataValue'}).get_text(strip=True).strip()
         except:
             pass
         try:
-            teamObj.avrAge = rows[1].find('span', attrs={'class':'dataValue'}).get_text().strip()
+            teamObj.avrAge = rows[1].find('span', attrs={'class':'dataValue'}).get_text(strip=True).replace(",", ".")
         except:
             pass
         try:
-           teamObj.numOflegionaries = rows[2].find('span', attrs={'class':'dataValue'}).get_text().strip()
+            strng = rows[2].find('span', attrs={'class':'dataValue'}).get_text(" ",strip=True)
+            strng = strng.split(' ')
+            teamObj.numOflegionaries = strng[0]
         except:
             pass
         
         try:
-            strng = soupOfTeamPage.find('div', attrs = {'class' : 'dataMarktwert'}).get_text().strip()
-            teamObj.marketValue= strng[:strng.index('€')+1]
-
+            strng = soupOfTeamPage.find('div', attrs = {'class' : 'dataMarktwert'}).get_text(strip=True).strip()
+            strng = strng[:strng.index('€')+1]
+            strng = strng.replace("€", "Eur")
+            strng = strng.replace(".", "")
+            strng = strng.replace(",", ".")
+            teamObj.marketValue = int(strng)
         except:
             pass
 
@@ -183,7 +210,7 @@ class TransferMarktCrawler:
         lst = [text for text in player_data_table.stripped_strings]
         #print(lst, '\n')
         try:
-            playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text()
+            playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text(strip=True)
         except:
             pass
         try:
@@ -203,7 +230,11 @@ class TransferMarktCrawler:
             pass
         try:
             indx = lst.index('Boyu:')
-            playerObj.hight = lst[indx+1]
+            s = lst[indx+1].replace(",", ".")
+            try:
+                playerObj.hight = s.split('\xa0')[0]
+            except:
+                pass
         except:
             pass
         try:
@@ -253,10 +284,10 @@ class TransferMarktCrawler:
         transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
         rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
         for row in rows:
-            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text().strip()
-            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip())
-            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text().strip()
-            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text().strip()
+            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
+            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
+            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
+            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
             playerObj.pastOfTransfers.append((season,date,old_team,new_team))
         
         #playerObj.toString()
@@ -268,7 +299,7 @@ class TransferMarktCrawler:
         lst = [text for text in player_data_table.stripped_strings]
         #print(lst, '\n')
         try:
-            playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text()
+            playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text(strip=True)
         except:
             pass
         try:
@@ -288,7 +319,12 @@ class TransferMarktCrawler:
             pass
         try:
             indx = lst.index('Größe:')
-            playerObj.hight = lst[indx+1]
+            s = lst[indx+1].replace(",", ".")
+            try:
+                playerObj.hight = s.split('\xa0')[0]
+            except:
+                pass
+            
         except:
             pass
         try:
@@ -338,10 +374,10 @@ class TransferMarktCrawler:
         transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
         rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
         for row in rows:
-            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text().strip()
-            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip())
-            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text().strip()
-            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text().strip()
+            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
+            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
+            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
+            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
             playerObj.pastOfTransfers.append((season,date,old_team,new_team))
         
         #playerObj.toString()
@@ -349,15 +385,17 @@ class TransferMarktCrawler:
 
 
     def date_converter_4_mysql(self,date):
-        if '.' not in date:
-            months = {'Oca':'01', 'Şub':'02', 'Mar':'03', 'Nis':'04', 'May':'05', 'Haz':'06',
-                'Tem':'07', 'Ağu':'08','Eyl':'09', 'Eki':'10', 'Kas':'11', 'Ara':'12'}
-            date = date.split(' ')
-            date = date[2] + '-' + months[date[1]] + '-' + date[0]
-        else:
-            date = date.split('.')
-            date = date[2] + '-' + date[1] + '-' + date[0]
-
+        try:
+            if '.' not in date:
+                months = {'Oca':'01', 'Şub':'02', 'Mar':'03', 'Nis':'04', 'May':'05', 'Haz':'06',
+                    'Tem':'07', 'Ağu':'08','Eyl':'09', 'Eki':'10', 'Kas':'11', 'Ara':'12'}
+                date = date.split(' ')
+                date = date[2] + '-' + months[date[1]] + '-' + date[0]
+            else:
+                date = date.split('.')
+                date = date[2] + '-' + date[1] + '-' + date[0]
+        except:
+            return '0000-00-00'
         return date
         
         
