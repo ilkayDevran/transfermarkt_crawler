@@ -1,10 +1,10 @@
 class League:
     def  __init__(self):
-        self.name = ''
-        self.type = ''
-        self.country = ''
-        self.totalValue = ''
-        self.href = ''
+        self.name = 'unknown'
+        self.type = 'unknown'
+        self.country = 'unknown'
+        self.totalValue = 'unknown'
+        self.href = 'unknown'
         self.clubs = []
     
     def toString(self):
@@ -16,3 +16,10 @@ class League:
         for club in self.clubs:
             print (club.name)
         print('\n')
+
+    def dataTypestoString(self):
+        print ('Name:', type(self.name))
+        print ('Degree:', type(self.type))
+        print ('Country:', type(self.country))
+        print ('Total Value:', type(self.totalValue))
+        print ('href: ', type(self.href))

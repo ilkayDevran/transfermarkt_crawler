@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from league import League as LEAG
 from club import Club as CLB
 from player import Player as PLYR
+from dataBase import DataBase as DB
 
 
 class TransferMarktCrawler:
@@ -21,6 +22,7 @@ class TransferMarktCrawler:
         self.URL = 'https://www.transfermarkt.com.tr'
         self.country_href_list = ['/wettbewerbe/national/wettbewerbe/174']
         self.leagues = []
+        self.db = DB('innodb')
 
     def start(self):
         
@@ -29,8 +31,7 @@ class TransferMarktCrawler:
             r = self.send_request(self.URL + country_href)
             # Parse the response
             soup = BeautifulSoup(r.text, 'html.parser')
-            tables = soup.find_all('div', attrs = {'class' : 'responsive-table'})
-            
+            tables = [soup.find_all('div', attrs = {'class' : 'responsive-table'})[0]]
             count = 1
             for table in tables:
                 #print('for 1')
@@ -79,7 +80,17 @@ class TransferMarktCrawler:
                                         # Go Into Current PLAYER Page and Initialize a Player Object
                                         playerProfile_r = self.send_request(self.URL + player.get('href'))
                                         soupOfPlayerProfile = BeautifulSoup(playerProfile_r.text, 'html.parser')
-                                        self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                                        #print('href:', player.get('href'))
+                                        try:
+                                            self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                                            print('Try:', currentPlayer.full_name)
+
+                                        except:
+                                            
+                                            self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                                            print('except DE:', currentPlayer.full_name)
+                                        else:
+                                            pass
                                         currentTeam.players.append(currentPlayer)
                                 currentLeague.clubs.append(currentTeam)
                                 """
@@ -93,15 +104,17 @@ class TransferMarktCrawler:
                             continue
                     else:
                         continue
+                    
                     self.leagues.append(currentLeague)
+                    self.db.insert_league_data(currentLeague)
+                    """
                     print(self.leagues[0].name)
                     print(self.leagues[0].clubs[0].name)
                     print(self.leagues[0].clubs[0].players[0].full_name)
-                    
+                    """
                                 
-                    print('enter a bas')
-                    input() 
-                input() 
+                    print('Insertion has been complited! :)')
+                
 
     def set_league_infos(self, leagueObj, soupOfLeaguePage,link):
         profileHeader = soupOfLeaguePage.find_all('table', attrs = {'class' : 'profilheader'})
@@ -125,7 +138,10 @@ class TransferMarktCrawler:
             pass
         leagueObj.href = link  #league href
         #leagueObj.toString()
-      
+        #leagueObj.dataTypestoString()
+        #input()
+
+        
     def set_club_infos(self, teamObj, soupOfTeamPage, link):
         try:
             teamObj.name = soupOfTeamPage.find('div', attrs={'class':'dataName'}).find('h1').get_text().strip()
@@ -156,18 +172,23 @@ class TransferMarktCrawler:
             pass
 
         teamObj.href = link
+        
         #teamObj.toString()
+        #teamObj.dataTypestoString()
+        #input()
+
 
     def set_player_infos(self, playerObj, soupOfPlayerProfile, link):
         player_data_table = soupOfPlayerProfile.find('table', attrs={'class':'auflistung'})
         lst = [text for text in player_data_table.stripped_strings]
+        #print(lst, '\n')
         try:
             playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text()
         except:
             pass
         try:
             indx = lst.index('Doğum tarihi:')
-            playerObj.bday = lst[indx+1]
+            playerObj.bday = self.date_converter_4_mysql(lst[indx+1])
         except:
             pass
         try:
@@ -212,32 +233,135 @@ class TransferMarktCrawler:
             pass
         try:
             indx = lst.index('Takıma katılma tarihi:')
-            playerObj.joinedDate = lst[indx+1]
+            playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
         except:
             indx = lst.index('Takıma katılma tarihi::')
-            playerObj.joinedDate = lst[indx+1]
+            playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
         else:
             pass
         try:
             indx = lst.index('Sözleşme bitiş tarihi:')  ######
-            playerObj.endOfContDate = lst[indx+1]
+            playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
         except:
             indx = lst.index('Sözleşme bitiş tarihi::')  ######
-            playerObj.endOfContDate = lst[indx+1]
+            playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
         else:
             pass
         playerObj.href = link
+        
+        # Transfer Table Parsing
         transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
         rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
         for row in rows:
             season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text().strip()
-            date = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip()
+            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip())
             old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text().strip()
             new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text().strip()
             playerObj.pastOfTransfers.append((season,date,old_team,new_team))
         
-        playerObj.toString()
-        input()
+        #playerObj.toString()
+        #playerObj.dataTypestoString()
+       
+
+    def set_player_infos_DE(self, playerObj, soupOfPlayerProfile, link):
+        player_data_table = soupOfPlayerProfile.find('table', attrs={'class':'auflistung'})
+        lst = [text for text in player_data_table.stripped_strings]
+        #print(lst, '\n')
+        try:
+            playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text()
+        except:
+            pass
+        try:
+            indx = lst.index('Geburtsdatum:')
+            playerObj.bday = self.date_converter_4_mysql(lst[indx+1])
+        except:
+            pass
+        try:
+            indx = lst.index('Geburtsort:')
+            playerObj.bplace = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Alter:')
+            playerObj.age = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Größe:')
+            playerObj.hight = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Nationalität:')
+            playerObj.nationality = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Position:')
+            playerObj.position = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Fuß:')
+            playerObj.leg = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Spielerberater:')
+            playerObj.counselar = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Aktueller Verein:')
+            playerObj.currentClub = lst[indx+1]
+        except:
+            pass
+        try:
+            indx = lst.index('Im Team seit:')
+            playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
+        except:
+            indx = lst.index('Im Team seit::')
+            playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
+        else:
+            pass
+        try:
+            indx = lst.index('Vertrag bis:')  ######
+            playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
+        except:
+            indx = lst.index('Vertrag bis::')  ######
+            playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
+        else:
+            pass
+        playerObj.href = link
+        
+        # Transfer Table Parsing
+        transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
+        rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
+        for row in rows:
+            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text().strip()
+            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text().strip())
+            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text().strip()
+            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text().strip()
+            playerObj.pastOfTransfers.append((season,date,old_team,new_team))
+        
+        #playerObj.toString()
+        #playerObj.dataTypestoString()
+
+
+    def date_converter_4_mysql(self,date):
+        if '.' not in date:
+            months = {'Oca':'01', 'Şub':'02', 'Mar':'03', 'Nis':'04', 'May':'05', 'Haz':'06',
+                'Tem':'07', 'Ağu':'08','Eyl':'09', 'Eki':'10', 'Kas':'11', 'Ara':'12'}
+            date = date.split(' ')
+            date = date[2] + '-' + months[date[1]] + '-' + date[0]
+        else:
+            date = date.split('.')
+            date = date[2] + '-' + date[1] + '-' + date[0]
+
+        return date
+        
+        
+
     def send_request(self, url):
         # Check 'User-Agent' whether website blocks traffic from non-browsers
         session = requests.Session()
@@ -258,6 +382,8 @@ class TransferMarktCrawler:
 def main():
     myCrawler = TransferMarktCrawler()
     myCrawler.start()
+    """db = DB('innodb')
+    db.set_league_infos()"""
 
 if __name__ == '__main__':
     main()
