@@ -15,6 +15,8 @@ from league import League as LEAG
 from club import Club as CLB
 from player import Player as PLYR
 from dataBase import DataBase as DB
+from proxyCollector import ProxyCollector as PC
+from random import randint
 import time
 import re
 
@@ -25,110 +27,131 @@ class TransferMarktCrawler:
         self.country_href_list = ['/wettbewerbe/national/wettbewerbe/174']
         self.leagues = []
         self.db = DB('innodb')
+        self.pc = PC()
+        self.pr_counter = 0
 
     def start(self):
         
         # Country Leagues -> Teams of a League -> Players in Team -> Player Info
         for country_href in self.country_href_list: # Country Leagues Page
+            
+            """------------********-----------"""
             r = self.send_request(self.URL + country_href)
+            """------------********-----------"""
+            
             # Parse the response
             soup = BeautifulSoup(r.text, 'html.parser')
             tables = [soup.find_all('div', attrs = {'class' : 'responsive-table'})[0]]
-            count = 1
+
             for table in tables:
-                #print('for 1')
-                for league_link in table.findAll('a'):
-                    #print('for 2')
-                    start_time = time.time()
-                    currentLeague = LEAG() # CREATE LEAGUE OBJECT
-                    if league_link.get('title') != 'Müsabaka forumuna git':
-                        #print('1 if')
-                        count+=1
-                        if count % 2 != 0:
-                            #print('2 if')
-                            count=1
-                            # Go Into Current LEAGUE Page and Initialize a League Object
-                            leaguePage_r = self.send_request(self.URL + league_link.get('href'))
-                            
-                            soupOfLeaguePage = BeautifulSoup(leaguePage_r.text, 'html.parser')
-    
-                            if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Kulüp':
-                                if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Verein':
-                                    print('This is not a useful league table. Link, ', league_link.get('href'))
-                                    continue
-                                      
-                            # set league info
-                            self.set_league_infos(currentLeague,soupOfLeaguePage, league_link.get('href'))
-                            print(currentLeague.name, currentLeague.type, '------------------------')
-
-                            # parsing team table in current league page to get links of teams
-                            table_of_teams = soupOfLeaguePage.find('div', attrs={'id':'yw1', 'class':'grid-view'}) # reaching to the team table in league page 
-                            tbody = table_of_teams.find('tbody')  # tbody
-                            club_column = tbody.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small hide-for-pad'}) # (Kulup) column to reach the link
-                            for clb in club_column:
-                                #print('for 3')
-                                currentTeam = CLB() # CREATE CLUB OBJECT
-                                # Go Into Current TEAM Page and Initialize a Team Object
-                                teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
-                                soupOfTeamPage = BeautifulSoup(teamPage_r.text, 'html.parser')
-                                self.set_club_infos(currentTeam, soupOfTeamPage, clb.find('a').get('href'))
-                                print(currentTeam.name)
-                                
-                                # parsing player table in current team page to get links of player profiles
-                                table_of_players = soupOfTeamPage.find('div', attrs={'id':'yw1', 'class':'grid-view'})
-                                tbody2 = table_of_players.find('tbody')  # tbody
-                                rows = tbody2.findAll('td', attrs = {'class':'posrela'})
-                                counter = 1 # counter is used to prevent repeating same links
-                                for row in rows:
-                                    for player in row.findAll('a', attrs = {'class':'spielprofil_tooltip'}):
-                                        if counter%2 == 0:
-                                            counter=1
-                                            continue
-
-                                        counter+=1
-                                        currentPlayer = PLYR()  # CREATE PLAYER OBJECT
-                                        # Go Into Current PLAYER Page and Initialize a Player Object
-                                        playerProfile_r = self.send_request(self.URL + player.get('href'))
-                                        soupOfPlayerProfile = BeautifulSoup(playerProfile_r.text, 'html.parser')
-                                        #print('href:', player.get('href'))
-                                        try:
-                                            self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
-                                            #print('\t', currentPlayer.full_name,)
-
-                                        except:
-                                            self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player.get('href'))
-                                            #print('\t', currentPlayer.full_name,)
-                                        else:
-                                            pass
-                                        
-                                        currentTeam.players.append(currentPlayer)
-                                currentLeague.clubs.append(currentTeam)
-                                """
-                                print('FINAL PRINT')
-                                for club in currentLeague.clubs:
-                                    for player in club.players:
-                                        print(player.full_name, '\t', player.currentClub)
-                            #input()
-                            """
-                        else:
-                            continue
-                    else:
-                        continue
-                    print("--- %s seconds ---" % (time.time() - start_time))
-                    self.leagues.append(currentLeague)
-                    print('Insertion time**************')
-                    self.db.insert_league_data(currentLeague)
-                    print('Insertion has been complited! :)')
-                    print('\n\n\n')
-                    exit()
-                    """
-                    print(self.leagues[0].name)
-                    print(self.leagues[0].clubs[0].name)
-                    print(self.leagues[0].clubs[0].players[0].full_name)
-                    """
-                             
+                self.leagues_loop(table)
+           
+    # LOOPS
+    def leagues_loop(self,table):
+        count = 1
+        for league_link in table.findAll('a'):
+            start_time = time.time() # START TIME FOR ONE LEAGUE
+            currentLeague = LEAG() # CREATE LEAGUE OBJECT
+            if league_link.get('title') != 'Müsabaka forumuna git':
+                count+=1
+                if count % 2 != 0:
+                    count=1
+                    # Go Into Current LEAGUE Page and Initialize a League Object
+                    leaguePage_r = self.send_request(self.URL + league_link.get('href'))
                     
+                    soupOfLeaguePage = BeautifulSoup(leaguePage_r.text, 'html.parser')
+
+                    if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Kulüp':
+                        if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Verein':
+                            print('This is not a useful league table. Link, ', league_link.get('href'))
+                            continue
+                                
+                    # set league info
+                    self.set_league_infos(currentLeague,soupOfLeaguePage, league_link.get('href'))
+                    print(currentLeague.name, currentLeague.type, '------------------------')
+
+                    # parsing team table in current league page to get links of teams
+                    table_of_teams = soupOfLeaguePage.find('div', attrs={'id':'yw1', 'class':'grid-view'}) # reaching to the team table in league page 
+                    tbody = table_of_teams.find('tbody')  # tbody
+                    club_column = tbody.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small hide-for-pad'}) # (Kulup) column to reach the link
+                    
+                    self.clubs_loop(club_column, currentLeague)
+                else:
+                    continue
+            else:
+                continue
+
+
+            print("League:--- %s seconds ---" % (time.time() - start_time))
+            self.leagues.append(currentLeague)
+            
+            print('Insertion time**************')
+            #self.db.insert_league_data(currentLeague)
+            print('Insertion has been complited! :)')
+            print('\n\n\n')
+            exit()
+
+    def clubs_loop(self, club_column, currentLeague):
+        for clb in club_column:
+            start_time = time.time() # START TIME FOR ONE Club
+            currentTeam = CLB() # CREATE CLUB OBJECT
+            
+            # Go Into Current TEAM Page and Initialize a Team Object
+            """------------********-----------"""
+            teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
+            """------------********-----------"""
+
+            soupOfTeamPage = BeautifulSoup(teamPage_r.text, 'html.parser')
+            
+            # Set current team info
+            self.set_club_infos(currentTeam, soupOfTeamPage, clb.find('a').get('href'))
+            
+            print(currentTeam.name)
+
+            # parsing player table in current team page to get links of player profiles
+            table_of_players = soupOfTeamPage.find('div', attrs={'id':'yw1', 'class':'grid-view'})
+            tbody2 = table_of_players.find('tbody')  # tbody
+            rows = tbody2.findAll('td', attrs = {'class':'posrela'})
+            
+            self.players_loop(rows, currentTeam)
+            currentLeague.clubs.append(currentTeam)
+            print("Team:--- %s seconds ---" % (time.time() - start_time))
+   
+    def players_loop(self,rows, currentTeam):
+        team_kadro_time = 0
+        count = 1 # count is used to prevent repeating same links
+        for row in rows:
+            for player in row.findAll('a', attrs = {'class':'spielprofil_tooltip'}):
+                if count%2 == 0:
+                    count=1
+                    continue
+
+                count+=1
+                start_time = time.time() # START TIME FOR ONE Player
+                currentPlayer = PLYR()  # CREATE PLAYER OBJECT
+
+                """!!!!!!!------------********-----------"""
+                # Go Into Current PLAYER Page and Initialize a Player Object
+                playerProfile_r = self.send_request(self.URL + player.get('href'))
+                """!!!!!!!------------********-----------"""
+
+                soupOfPlayerProfile = BeautifulSoup(playerProfile_r.text, 'html.parser')
                 
+                # Set player infos
+                try:
+                    self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                except:
+                    self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                else:
+                    pass
+                currentTeam.players.append(currentPlayer)
+                print("Player:--- %s seconds ---" % (time.time() - start_time))
+                team_kadro_time += (time.time() - start_time)
+        print("Team_Kadro_time:--- %s seconds ---" % team_kadro_time)
+                
+
+    
+    # SETTERS IN BELOW
 
     def set_league_infos(self, leagueObj, soupOfLeaguePage,link):
         profileHeader = soupOfLeaguePage.find_all('table', attrs = {'class' : 'profilheader'})
@@ -448,23 +471,33 @@ class TransferMarktCrawler:
             return '0000-00-00'
         return date
         
-        
-
     def send_request(self, url):
+        """if self.pr_counter == 10:
+            self.pc.refresh_proxies()
+            self.pr_counter = 0
+        rand = randint(1,10)
+        if rand >5:
+            sec = 2
+            time.sleep(sec)
+        """
+        #time.sleep(1)
         # Check 'User-Agent' whether website blocks traffic from non-browsers
-        session = requests.Session()
+        #session = requests.Session()
         #print("\nSession Headers:", session.headers, "\n")
 
         # This is chrome, you can set whatever browser you like
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} 
         
+        #i = randint(0,len(self.pc.proxies)-1)
+        #proxy = self.pc.proxies[i]
+        
         try:
-            r = requests.get(url, headers=headers)
-        except:
-            print ('ERROR:\nResponse Status:', r.status_code)
-            exit()
-
-        return r
+            return requests.get(url, headers=headers) # , proxies={"http": proxy, "https": proxy}
+        except Exception:
+            print ('ERROR:(SEND REQUEST METHOD)')
+            return self.send_request(url)
+        
+        #self.pr_counter+=1
 
 
 def main():
