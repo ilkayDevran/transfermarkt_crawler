@@ -4,9 +4,9 @@ class DataBase:
     def __init__(self, db):
         self.choosen_DB = db
         self.connection = pymysql.connect(
-                host = 'tmcrawler.cb5e4o6zarmq.eu-central-1.rds.amazonaws.com'
-                , user = 'tmroot'
-                , passwd = 'transfermarktPassw0rd'
+                host = ''
+                , user = ''
+                , passwd = ''
                 , db = self.choosen_DB,
                 charset='utf8')
         
@@ -36,8 +36,13 @@ class DataBase:
                     
                     for transfer in player.pastOfTransfers:
                         (season, date, old_team, new_team) = transfer
-                        print("""insert Into innodb.Transfers (season, date, old_team, new_team, player_ID) values('%s', '%s', '%s', '%s', (SELECT player_id FROM innodb.Players WHERE full_name = '%s')); """ % (season, date, old_team, new_team, player.full_name))
-                        cur.execute("""insert Into innodb.Transfers (season, date, old_team, new_team, player_ID) values('%s', '%s', '%s', '%s', (SELECT player_id FROM innodb.Players WHERE full_name = '%s')); """ % (season, date, old_team, new_team, player.full_name))
+                        #print("""insert Into innodb.Transfers (season, date, old_team, new_team, player_ID) values('%s', '%s', '%s', '%s', (SELECT player_id FROM innodb.Players WHERE full_name = '%s')); """ % (season, date, old_team, new_team, player.full_name))
+                        a = [cur.execute("""SELECT player_id FROM innodb.Players WHERE full_name = '%s' """ % player.full_name)]
+                        print (a)
+                        for c_id in a:
+                            print(c_id,'AAAAAAAAAAAAA')
+                        
+                        cur.execute("""insert Into innodb.Transfers (season, date, old_team, new_team, player_ID) values('%s', '%s', '%s', '%s', (SELECT player_id FROM innodb.Players WHERE full_name = '%s' AND bday = '%s')); """ % (season, date, old_team, new_team, player.full_name, player.bday))
                         print('[INFO]: TRANSFER INSERT OKAY')
             
             self.connection.commit()

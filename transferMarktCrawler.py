@@ -211,6 +211,10 @@ class TransferMarktCrawler:
         #print(lst, '\n')
         try:
             playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text(strip=True)
+            try:
+                playerObj.full_name = playerObj.full_name.replace("'"," ")
+            except:
+                pass
         except:
             pass
         try:
@@ -255,11 +259,19 @@ class TransferMarktCrawler:
         try:
             indx = lst.index('Oyuncu danışmanı:')
             playerObj.counselar = lst[indx+1]
+            try:
+                playerObj.counselar = playerObj.counselar.replace("'"," ")
+            except:
+                pass
         except:
             pass
         try:
             indx = lst.index('Güncel kulüp:')
             playerObj.currentClub = lst[indx+1]
+            try:
+                playerObj.currentClub = playerObj.currentClub.replace("'"," ")
+            except:
+                pass
         except:
             pass
         try:
@@ -279,16 +291,26 @@ class TransferMarktCrawler:
         else:
             pass
         playerObj.href = link
-        
-        # Transfer Table Parsing
-        transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
-        rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
-        for row in rows:
-            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
-            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
-            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
-            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
-            playerObj.pastOfTransfers.append((season,date,old_team,new_team))
+        try:
+            # Transfer Table Parsing
+            transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
+            rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
+            for row in rows:
+                season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
+                date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
+                old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
+                new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
+                try:
+                    old_team = old_team.replace("'"," ")
+                except:
+                    pass
+                try:
+                    new_team = new_team.replace("'"," ")
+                except:
+                    pass
+                playerObj.pastOfTransfers.append((season,date,old_team,new_team))
+        except:
+            playerObj.pastOfTransfers.append(('0/0','0000-00-00','unknow','unknow'))
         
         #playerObj.toString()
         #playerObj.dataTypestoString()
@@ -300,6 +322,10 @@ class TransferMarktCrawler:
         #print(lst, '\n')
         try:
             playerObj.full_name = soupOfPlayerProfile.find_all('h1',attrs={'itemprop':'name'})[0].get_text(strip=True)
+            try:
+                playerObj.full_name = playerObj.full_name.replace("'"," ")
+            except:
+                pass
         except:
             pass
         try:
@@ -345,41 +371,65 @@ class TransferMarktCrawler:
         try:
             indx = lst.index('Spielerberater:')
             playerObj.counselar = lst[indx+1]
+            try:
+                playerObj.counselar = playerObj.counselar.replace("'"," ")
+            except:
+                pass
         except:
             pass
         try:
             indx = lst.index('Aktueller Verein:')
             playerObj.currentClub = lst[indx+1]
+            try:
+                playerObj.currentClub = playerObj.currentClub.replace("'"," ")
+            except:
+                pass
         except:
             pass
+
         try:
             indx = lst.index('Im Team seit:')
             playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
         except:
+            pass
+        try:
             indx = lst.index('Im Team seit::')
             playerObj.joinedDate = self.date_converter_4_mysql(lst[indx+1])
-        else:
+        except:
             pass
+
         try:
             indx = lst.index('Vertrag bis:')  ######
             playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
         except:
+            pass
+        try:
             indx = lst.index('Vertrag bis::')  ######
             playerObj.endOfContDate = self.date_converter_4_mysql(lst[indx+1])
-        else:
+        except:
             pass
         playerObj.href = link
         
         # Transfer Table Parsing
-        transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
-        rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
-        for row in rows:
-            season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
-            date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
-            old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
-            new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
-            playerObj.pastOfTransfers.append((season,date,old_team,new_team))
-        
+        try:
+            transfer_table = soupOfPlayerProfile.find_all('div', attrs={'class':'responsive-table'})[0]
+            rows = transfer_table.find('tbody').find_all('tr', attrs={'class':'zeile-transfer'})
+            for row in rows:
+                season = row.findAll('td', attrs={'class':'zentriert hide-for-small'})[0].get_text(strip=True).strip()
+                date = self.date_converter_4_mysql(row.findAll('td', attrs={'class':'zentriert hide-for-small'})[1].get_text(strip=True).strip())
+                old_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[0].find('a').get_text(strip=True).strip()
+                new_team = row.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small vereinsname'})[1].find('a').get_text(strip=True).strip()
+                try:
+                    old_team = old_team.replace("'"," ")
+                except:
+                    pass
+                try:
+                    new_team = new_team.replace("'"," ")
+                except:
+                    pass
+                playerObj.pastOfTransfers.append((season,date,old_team,new_team))
+        except:
+            playerObj.pastOfTransfers.append(('0/0','0000-00-00','unknow','unknow'))
         #playerObj.toString()
         #playerObj.dataTypestoString()
 
