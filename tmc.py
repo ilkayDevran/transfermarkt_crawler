@@ -15,7 +15,6 @@ from league import League as LEAG
 from club import Club as CLB
 from player import Player as PLYR
 from dataBase import DataBase as DB
-from proxyCollector import ProxyCollector as PC
 from random import randint
 import time
 import re
@@ -56,25 +55,26 @@ class TransferMarktCrawler:
                 count+=1
                 if count % 2 != 0:
                     count=1
+                    league_href = league_link.get('href')
                     # Go Into Current LEAGUE Page and Initialize a League Object
-                    leaguePage_r = self.send_request(self.URL + league_link.get('href'))
-                    
+                    leaguePage_r = self.send_request(self.URL + league_href)
+
                     soupOfLeaguePage = BeautifulSoup(leaguePage_r.text, 'html.parser')
 
                     if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Kulüp':
                         if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Verein':
-                            print('This is not a useful league table. Link, ', league_link.get('href'))
+                            print('This is not a useful league table. Link, ', league_href)
                             continue
                                 
                     # set league info
-                    self.set_league_infos(currentLeague,soupOfLeaguePage, league_link.get('href'))
+                    self.set_league_infos(currentLeague,soupOfLeaguePage, league_href)
                     print(currentLeague.name, currentLeague.type, '------------------------')
 
                     # parsing team table in current league page to get links of teams
                     table_of_teams = soupOfLeaguePage.find('div', attrs={'id':'yw1', 'class':'grid-view'}) # reaching to the team table in league page 
                     tbody = table_of_teams.find('tbody')  # tbody
                     club_column = tbody.findAll('td', attrs={'class':'hauptlink no-border-links hide-for-small hide-for-pad'}) # (Kulup) column to reach the link
-                    
+
                     self.clubs_loop(club_column, currentLeague)
                 else:
                     continue
@@ -93,18 +93,19 @@ class TransferMarktCrawler:
 
     def clubs_loop(self, club_column, currentLeague):
         for clb in club_column:
-            start_time = time.time() # START TIME FOR ONE Club
+            #start_time = time.time() # START TIME FOR ONE Club
             currentTeam = CLB() # CREATE CLUB OBJECT
-            
+            club_href = clb.find('a').get('href')
+
             # Go Into Current TEAM Page and Initialize a Team Object
             """------------********-----------"""
-            teamPage_r = self.send_request(self.URL + clb.find('a').get('href'))
+            teamPage_r = self.send_request(self.URL + club_href)
             """------------********-----------"""
 
             soupOfTeamPage = BeautifulSoup(teamPage_r.text, 'html.parser')
             
             # Set current team info
-            self.set_club_infos(currentTeam, soupOfTeamPage, clb.find('a').get('href'))
+            self.set_club_infos(currentTeam, soupOfTeamPage, club_href)
             
             print(currentTeam.name)
 
@@ -115,7 +116,7 @@ class TransferMarktCrawler:
             
             self.players_loop(rows, currentTeam)
             currentLeague.clubs.append(currentTeam)
-            print("Team:--- %s seconds ---" % (time.time() - start_time))
+            #print("Team:--- %s seconds ---" % (time.time() - start_time))
    
     def players_loop(self,rows, currentTeam):
         team_kadro_time = 0
@@ -125,29 +126,29 @@ class TransferMarktCrawler:
                 if count%2 == 0:
                     count=1
                     continue
-
+                player_href = player.get('href')
                 count+=1
-                start_time = time.time() # START TIME FOR ONE Player
+                #start_time = time.time() # START TIME FOR ONE Player
                 currentPlayer = PLYR()  # CREATE PLAYER OBJECT
 
                 """!!!!!!!------------********-----------"""
                 # Go Into Current PLAYER Page and Initialize a Player Object
-                playerProfile_r = self.send_request(self.URL + player.get('href'))
+                playerProfile_r = self.send_request(self.URL + player_href)
                 """!!!!!!!------------********-----------"""
 
                 soupOfPlayerProfile = BeautifulSoup(playerProfile_r.text, 'html.parser')
                 
                 # Set player infos
                 try:
-                    self.set_player_infos(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                    self.set_player_infos(currentPlayer, soupOfPlayerProfile, player_href)
                 except:
-                    self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player.get('href'))
+                    self.set_player_infos_DE(currentPlayer, soupOfPlayerProfile, player_href)
                 else:
                     pass
                 currentTeam.players.append(currentPlayer)
-                print("Player:--- %s seconds ---" % (time.time() - start_time))
-                team_kadro_time += (time.time() - start_time)
-        print("Team_Kadro_time:--- %s seconds ---" % team_kadro_time)
+                #print("Player:--- %s seconds ---" % (time.time() - start_time))
+                #team_kadro_time += (time.time() - start_time)
+        #print("Team_Kadro_time:--- %s seconds ---" % team_kadro_time)
                 
 
     
@@ -472,14 +473,6 @@ class TransferMarktCrawler:
         return date
         
     def send_request(self, url):
-        """if self.pr_counter == 10:
-            self.pc.refresh_proxies()
-            self.pr_counter = 0
-        rand = randint(1,10)
-        if rand >5:
-            sec = 2
-            time.sleep(sec)
-        """
         #time.sleep(1)
         # Check 'User-Agent' whether website blocks traffic from non-browsers
         #session = requests.Session()
@@ -487,18 +480,12 @@ class TransferMarktCrawler:
 
         # This is chrome, you can set whatever browser you like
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} 
-        
-        #i = randint(0,len(self.pc.proxies)-1)
-        #proxy = self.pc.proxies[i]
-        
+
         try:
-            return requests.get(url, headers=headers) # , proxies={"http": proxy, "https": proxy}
+            return requests.get(url, headers=headers)
         except Exception:
             print ('ERROR:(SEND REQUEST METHOD)')
             return self.send_request(url)
-        
-        #self.pr_counter+=1
-
 
 def main():
     myCrawler = TransferMarktCrawler()

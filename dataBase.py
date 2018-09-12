@@ -4,9 +4,9 @@ class DataBase:
     def __init__(self, db):
         self.choosen_DB = db
         self.connection = pymysql.connect(
-                host = ''
-                , user = ''
-                , passwd = ''
+                host = 'tmcrawler.cb5e4o6zarmq.eu-central-1.rds.amazonaws.com'
+                , user = 'tmroot'
+                , passwd = 'transfermarktPassw0rd'
                 , db = self.choosen_DB,
                 charset='utf8')
         
