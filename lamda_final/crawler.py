@@ -7,6 +7,7 @@ from club import Club as CLB
 from player import Player as PLYR
 from dataBase import DataBase as DB
 import time
+from http import cookiejar  
 
 
 class TransferMarktCrawler:
@@ -459,10 +460,21 @@ class TransferMarktCrawler:
         return date
         
     def send_request(self, url):
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} 
-        time.sleep(2)
+        s = requests.Session()
+        s.cookies.set_policy(BlockAll())
+
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'} 
+        
         try:
-            return requests.get(url, headers=headers)
+            time.sleep(2)
+            return s.get(url, headers=headers)
         except Exception:
             print ('ERROR:(SEND REQUEST METHOD)')
             return self.send_request(url)
+
+
+class BlockAll(cookiejar.CookiePolicy):
+    return_ok = set_ok = domain_return_ok = path_return_ok = lambda self, *args, **kwargs: False
+    netscape = True
+    rfc2965 = hide_cookie2 = False
