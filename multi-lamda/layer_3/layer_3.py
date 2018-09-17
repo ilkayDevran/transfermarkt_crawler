@@ -100,8 +100,6 @@ def get_links_of_players(rows, links_of_players):
             links_of_players.append((player_name,player_href))
             count+=1
 
-
-
 def send_request(url):
     s = requests.Session()
     s.cookies.set_policy(BlockAll())
@@ -117,9 +115,12 @@ def send_request(url):
         return send_request(url)
 
 
+"""
 p ,c_id = start('https://www.transfermarkt.com.tr',
-    '/galatasaray-istanbul/startseite/verein/141/saison_id/2018',1)
+    '/galatasaray-istanbul/startseite/verein/141/saison_id/2018',2)
 
 print('main c_id:',c_id)
+
 for i in p:
     print(i)
+"""

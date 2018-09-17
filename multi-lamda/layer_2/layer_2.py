@@ -82,7 +82,12 @@ def set_league_infos(soupOfLeaguePage):
         pass
 
     try:
-        totalValue = soupOfLeaguePage.find('div', attrs = {'class' : 'marktwert'}).get_text(strip=True).split(':', 1)[-1]
+        strng = soupOfLeaguePage.find('div', attrs = {'class' : 'marktwert'}).get_text(strip=True).split(':', 1)[-1]
+        strng = strng[:strng.index('€')+1]
+        strng = strng.replace("€", "Eur")
+        strng = strng.replace(".", "")
+        strng = strng.replace(",", ".")
+        totalValue = str(strng)
     except:
         pass
     # create tuple of data like an object
