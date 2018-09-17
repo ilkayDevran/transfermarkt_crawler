@@ -2,12 +2,13 @@
 
 import requests
 from bs4 import BeautifulSoup
+import time
+from http import cookiejar 
 from league import League as LEAG
 from club import Club as CLB
 from player import Player as PLYR
 from dataBase import DataBase as DB
-import time
-from http import cookiejar  
+ 
 
 
 class TransferMarktCrawler:
@@ -45,6 +46,7 @@ class TransferMarktCrawler:
 
                     soupOfLeaguePage = BeautifulSoup(leaguePage_r.text, 'html.parser')
 
+                    #### national league checking part ####
                     if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Kulüp':
                         if (soupOfLeaguePage.find('th', attrs={'id':'yw1_c0'}).get_text(strip=True).strip()) != 'Verein':
                             print('This is not a useful league table. Link, ', league_href)
