@@ -5,7 +5,7 @@
 ---
 ###### This website contains all the information we need under different pages. We have to regularly navigate through these pages to get the information of teams of all leagues in these leagues and players playing on these teams.
 
- ![architecture](https://raw.githubusercontent.com/UlucFVardar/AWS-Lamba-Multi-Processing/master/assets/AWS%20Lambda%20Multi%20%202.png)
+ ![architecture](https://raw.githubusercontent.com/ilkayDevran/transfermarkt_crawler/master/assets/AWS%20Lambda%20Multi%20%202.png)
 
 ### As you can see, there is a lambda architecture with 4 Layers.
 <details open>
@@ -34,7 +34,3 @@
 - [Invoke Lambda function from another Lambda Function](https://www.youtube.com/watch?v=5QwrseYLwNM)
 
 </details>
-
-
-
-
